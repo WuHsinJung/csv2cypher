@@ -1,0 +1,11 @@
+Label,ID,Name,Education System,Subject,IsRoot,Topic,Unit,Concept
+知識點(KnowledgePoint),KP001,認識1~5的數,國小(Elementary school),數學(Math),TRUE,數,數到10,認識數字
+知識點(KnowledgePoint),KP002,認識6~10的數,國小(Elementary school),數學(Math),,數,數到10,認識數字
+知識點(KnowledgePoint),KP003,1~10的做數,國小(Elementary school),數學(Math),,數,數到10,數數操作
+知識點(KnowledgePoint),KP004,認識0,國小(Elementary school),數學(Math),,數,數到10,認識數字
+知識點(KnowledgePoint),KP005,認識長度,國小(Elementary school),數學(Math),TRUE,量,比長短,長度概念
+知識點(KnowledgePoint),KP006,長度的直接比較,國小(Elementary school),數學(Math),,量,比長短,比較操作
+知識點(KnowledgePoint),KP007,直線和曲線,國小(Elementary school),數學(Math),TRUE,形,認識直線和曲線,線條概念
+知識點(KnowledgePoint),KP008,曲線的長度比較,國小(Elementary school),數學(Math),,形,認識直線和曲線,比較操作
+知識點(KnowledgePoint),KP009,厚薄的直接比較,國小(Elementary school),數學(Math),,量,比長短,比較操作
+知識點(KnowledgePoint),KP010,高矮的直接比較,國小(Elementary school),數學(Math),,量,比長短,比較操作

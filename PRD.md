@@ -32,17 +32,22 @@ CSV/Excel 轉 Neo4j Cypher 語句轉換工具
 ##### 2.1.2 知識點檔案處理
 **必填欄位：**
 - `Label`：節點標籤（如：KnowledgePoint）
-- `Name`：知識點名稱（主要識別屬性）
+- `Name`：知識點名稱（主要識別屬性，必須唯一）
 - `Education System`：教育階段（如：Elementary School、Junior High School、High School）
 - `Subject`：學科領域（如：math、chinese、english）
-- `IsRoot`：是否為根節點（TRUE/FALSE，空白視為TRUE）
 
 **選填欄位：**
 - `ID`：知識點編號
-- `第一層知識`：知識分類第一層
-- `第二層知識`：知識分類第二層
-- `第三層知識`：知識分類第三層
-- `Learning Performance`：學習表現描述
+- `IsRoot`：是否為根節點（TRUE/FALSE，空白時為空值）
+- `主題(Topic)` 或 `Topic`：知識分類主題層級
+- `次主題(Unit)` 或 `Unit`：知識分類次主題層級
+- `概念(Concept)` 或 `Concept`：知識分類概念層級
+
+**特殊處理：**
+- 支援中英文並列欄位名稱（如：`主題(Topic)` 或 `Topic`）
+- 向後相容舊的欄位名稱（`第一層知識`、`第二層知識`、`第三層知識`）
+- 當欄位值為 'x' 時視為空值
+- 知識點名稱必須唯一，重複時會拋出錯誤
 
 ##### 2.1.3 先備關係檔案處理
 **必填欄位：**

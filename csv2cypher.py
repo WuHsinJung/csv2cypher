@@ -41,17 +41,17 @@ def main():
                     knowledge_file = selected[0]
                     prerequisite_file = selected[1]
                 else:
-                    # 使用預設檔案
-                    knowledge_file = "knowledge_points_EMA.csv"
-                    prerequisite_file = "Prerequisite_EMA.csv"
+                    # 使用新格式範例檔案
+                    knowledge_file = "knowledge_points_example.csv"
+                    prerequisite_file = None
             except (ValueError, IndexError):
-                knowledge_file = "knowledge_points_EMA.csv"
-                prerequisite_file = "Prerequisite_EMA.csv"
+                knowledge_file = "knowledge_points_example.csv"
+                prerequisite_file = None
         else:
             # 互動式輸入
             knowledge_file = input("\n請輸入知識點檔案路徑 (或按Enter使用預設檔案): ").strip()
             if not knowledge_file:
-                knowledge_file = "knowledge_points_EMA.csv"
+                knowledge_file = "knowledge_points_example.csv"
             
             prerequisite_file = input("請輸入先備關係檔案路徑 (或按Enter使用預設檔案): ").strip()
             if not prerequisite_file:
@@ -65,7 +65,7 @@ def main():
         print(f"錯誤: 找不到知識點檔案 '{knowledge_file}'")
         return
     
-    if not os.path.exists(prerequisite_file):
+    if prerequisite_file and not os.path.exists(prerequisite_file):
         print(f"錯誤: 找不到先備關係檔案 '{prerequisite_file}'")
         return
     
@@ -75,13 +75,15 @@ def main():
         
         # 執行轉換
         print(f"\n正在處理知識點檔案: {knowledge_file}")
-        print(f"正在處理先備關係檔案: {prerequisite_file}")
         
         # 轉換知識點
         knowledge_cypher = converter.convert_knowledge_points(knowledge_file)
         
-        # 轉換先備關係
-        prerequisite_cypher = converter.convert_prerequisites(prerequisite_file)
+        # 轉換先備關係（如果檔案存在）
+        prerequisite_cypher = ""
+        if prerequisite_file:
+            print(f"正在處理先備關係檔案: {prerequisite_file}")
+            prerequisite_cypher = converter.convert_prerequisites(prerequisite_file)
         
         # 輸出結果
         print("\n" + "=" * 60)
@@ -94,7 +96,6 @@ def main():
         
         # 取得檔案名稱（不含副檔名）作為輸出檔案名稱
         knowledge_name = Path(knowledge_file).stem
-        prerequisite_name = Path(prerequisite_file).stem
         
         # 儲存知識點Cypher語句
         knowledge_output_file = output_dir / f"{knowledge_name}_nodes.cypher"
@@ -102,15 +103,18 @@ def main():
             f.write(knowledge_cypher)
         print(f"知識點Cypher語句已儲存至: {knowledge_output_file}")
         
-        # 儲存先備關係Cypher語句
-        prerequisite_output_file = output_dir / f"{prerequisite_name}_relationships.cypher"
-        with open(prerequisite_output_file, 'w', encoding='utf-8') as f:
-            f.write(prerequisite_cypher)
-        print(f"先備關係Cypher語句已儲存至: {prerequisite_output_file}")
+        # 儲存先備關係Cypher語句（如果存在）
+        if prerequisite_file and prerequisite_cypher:
+            prerequisite_name = Path(prerequisite_file).stem
+            prerequisite_output_file = output_dir / f"{prerequisite_name}_relationships.cypher"
+            with open(prerequisite_output_file, 'w', encoding='utf-8') as f:
+                f.write(prerequisite_cypher)
+            print(f"先備關係Cypher語句已儲存至: {prerequisite_output_file}")
         
         # 儲存完整Cypher腳本
-        complete_output_file = output_dir / f"{knowledge_name}_{prerequisite_name}_complete.cypher"
-        complete_script = f"""// 完整的Neo4j Cypher腳本
+        if prerequisite_file:
+            complete_output_file = output_dir / f"{knowledge_name}_{Path(prerequisite_file).stem}_complete.cypher"
+            complete_script = f"""// 完整的Neo4j Cypher腳本
 // 由CSV轉換工具自動生成
 // 檔案: {knowledge_file} + {prerequisite_file}
 
@@ -124,6 +128,22 @@ def main():
 // 查詢範例
 // MATCH (n:KnowledgePoint) RETURN n LIMIT 10;
 // MATCH (a:KnowledgePoint)-[r:Prerequisite]->(b:KnowledgePoint) RETURN a, r, b LIMIT 10;
+// MATCH (n:KnowledgePoint {{subject: 'math'}}) RETURN n;
+// MATCH (n:KnowledgePoint {{isRoot: true}}) RETURN n;
+"""
+        else:
+            complete_output_file = output_dir / f"{knowledge_name}_complete.cypher"
+            complete_script = f"""// 完整的Neo4j Cypher腳本
+// 由CSV轉換工具自動生成
+// 檔案: {knowledge_file}
+
+// 清除現有資料 (可選)
+// MATCH (n) DETACH DELETE n;
+
+{knowledge_cypher}
+
+// 查詢範例
+// MATCH (n:KnowledgePoint) RETURN n LIMIT 10;
 // MATCH (n:KnowledgePoint {{subject: 'math'}}) RETURN n;
 // MATCH (n:KnowledgePoint {{isRoot: true}}) RETURN n;
 """

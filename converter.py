@@ -104,9 +104,34 @@ class KnowledgeGraphConverter:
             # 清理資料
             df = df.dropna(how='all')  # 移除完全空白的列
             
-            # 檢查必要欄位
-            required_columns = ['Label', 'Name', 'Education System', 'Subject', 'IsRoot']
-            missing_columns = [col for col in required_columns if col not in df.columns]
+            # 建立欄位名稱對應表（支援中英文）
+            column_mapping = {
+                'Label': ['Label', '標籤(Label)', '標籤'],
+                'Name': ['Name', '名稱(Name)', '名稱'],
+                'Education System': ['Education System', '學制(Education System)', '學制'],
+                'Subject': ['Subject', '學科(Subject)', '學科'],
+                'ID': ['ID', '編號(ID)', '編號'],
+                'IsRoot': ['IsRoot', '是否為根結點(IsRoot)', '是否為根結點'],
+                'Topic': ['Topic', '主題(Topic)', '主題', '第一層知識'],
+                'Unit': ['Unit', '次主題(Unit)', '次主題', '第二層知識'],
+                'Concept': ['Concept', '概念(Concept)', '概念', '第三層知識']
+            }
+            
+            # 檢查必要欄位並建立對應關係
+            required_fields = ['Label', 'Name', 'Education System', 'Subject']
+            field_mapping = {}
+            missing_columns = []
+            
+            for field in required_fields:
+                found = False
+                for col in df.columns:
+                    if col in column_mapping[field]:
+                        field_mapping[field] = col
+                        found = True
+                        break
+                if not found:
+                    missing_columns.append(field)
+            
             if missing_columns:
                 raise ValueError(f"缺少必要欄位: {missing_columns}")
             
@@ -116,49 +141,93 @@ class KnowledgeGraphConverter:
             
             # 準備批量創建的資料
             nodes_data = []
+            seen_names = set()  # 用於檢查知識點名稱唯一性
             
             # 處理每一行資料
             for index, row in df.iterrows():
                 # 跳過標題行或空行
-                if pd.isna(row['Name']) or str(row['Name']).strip() == '':
+                name_col = field_mapping['Name']
+                if pd.isna(row[name_col]) or str(row[name_col]).strip() == '':
                     continue
                 
-                # 取得欄位值
-                label = str(row['Label']).strip() if pd.notna(row['Label']) else 'KnowledgePoint'
-                name = str(row['Name']).strip()
-                education_system = str(row['Education System']).strip() if pd.notna(row['Education System']) else ''
-                subject = str(row['Subject']).strip() if pd.notna(row['Subject']) else ''
-                is_root = str(row['IsRoot']).strip().upper() if pd.notna(row['IsRoot']) else 'TRUE'
+                # 取得欄位值（使用對應的欄位名稱）
+                label_col = field_mapping['Label']
+                label = str(row[label_col]).strip() if pd.notna(row[label_col]) else 'KnowledgePoint'
+                name = str(row[name_col]).strip()
+                
+                # 檢查知識點名稱唯一性
+                if name in seen_names:
+                    raise ValueError(f"知識點名稱重複: '{name}' (第{index+1}行)")
+                seen_names.add(name)
+                
+                education_system_col = field_mapping['Education System']
+                subject_col = field_mapping['Subject']
+                education_system = str(row[education_system_col]).strip() if pd.notna(row[education_system_col]) else ''
+                subject = str(row[subject_col]).strip() if pd.notna(row[subject_col]) else ''
+                
+                # 處理 IsRoot 欄位（如果存在）
+                is_root = ''
+                if 'IsRoot' in field_mapping:
+                    is_root_col = field_mapping['IsRoot']
+                    is_root = str(row[is_root_col]).strip().upper() if pd.notna(row[is_root_col]) and str(row[is_root_col]).strip() != '' else ''
                 
                 # 處理選填欄位
-                knowledge_id = str(row['ID']).strip() if pd.notna(row['ID']) and str(row['ID']).strip() != '' else ''
-                first_level = str(row['第一層知識']).strip() if pd.notna(row['第一層知識']) and str(row['第一層知識']).strip() != '' else ''
-                second_level = str(row['第二層知識']).strip() if pd.notna(row['第二層知識']) and str(row['第二層知識']).strip() != '' else ''
-                third_level = str(row['第三層知識']).strip() if pd.notna(row['第三層知識']) and str(row['第三層知識']).strip() != '' else ''
-                learning_performance = str(row['Learning Performance']).strip() if pd.notna(row['Learning Performance']) and str(row['Learning Performance']).strip() != '' else ''
+                knowledge_id = ''
+                if 'ID' in field_mapping:
+                    id_col = field_mapping['ID']
+                    knowledge_id = str(row[id_col]).strip() if pd.notna(row[id_col]) and str(row[id_col]).strip() != '' else ''
                 
-                # 轉換布林值
-                is_root_bool = 'true' if is_root == 'TRUE' else 'false'
+                # 處理知識層級欄位（支援中英文並列）
+                topic = ''
+                unit = ''
+                concept = ''
+                
+                # 處理 Topic 欄位
+                for col in df.columns:
+                    if col in column_mapping['Topic']:
+                        topic = str(row[col]).strip() if pd.notna(row[col]) and str(row[col]).strip() != '' and str(row[col]).strip().upper() != 'X' else ''
+                        break
+                
+                # 處理 Unit 欄位
+                for col in df.columns:
+                    if col in column_mapping['Unit']:
+                        unit = str(row[col]).strip() if pd.notna(row[col]) and str(row[col]).strip() != '' and str(row[col]).strip().upper() != 'X' else ''
+                        break
+                
+                # 處理 Concept 欄位
+                for col in df.columns:
+                    if col in column_mapping['Concept']:
+                        concept = str(row[col]).strip() if pd.notna(row[col]) and str(row[col]).strip() != '' and str(row[col]).strip().upper() != 'X' else ''
+                        break
+                
+                # 轉換布林值（空白時為空值）
+                if is_root == 'TRUE':
+                    is_root_bool = 'true'
+                elif is_root == 'FALSE':
+                    is_root_bool = 'false'
+                else:
+                    is_root_bool = None  # 空值
                 
                 # 建立節點屬性
                 properties = {
                     'name': name,
                     'educationSystem': education_system,
-                    'subject': subject,
-                    'isRoot': is_root_bool
+                    'subject': subject
                 }
+                
+                # 只有當 isRoot 有值時才添加
+                if is_root_bool is not None:
+                    properties['isRoot'] = is_root_bool
                 
                 # 添加選填屬性
                 if knowledge_id:
                     properties['knowledgeId'] = knowledge_id
-                if first_level:
-                    properties['firstLevel'] = first_level
-                if second_level:
-                    properties['secondLevel'] = second_level
-                if third_level:
-                    properties['thirdLevel'] = third_level
-                if learning_performance:
-                    properties['learningPerformance'] = learning_performance
+                if topic:
+                    properties['topic'] = topic
+                if unit:
+                    properties['unit'] = unit
+                if concept:
+                    properties['concept'] = concept
                 
                 nodes_data.append(properties)
             
@@ -218,9 +287,28 @@ class KnowledgeGraphConverter:
             # 清理資料
             df = df.dropna(how='all')  # 移除完全空白的列
             
-            # 檢查必要欄位
-            required_columns = ['Types', 'Prerequisite', 'Target']
-            missing_columns = [col for col in required_columns if col not in df.columns]
+            # 建立欄位名稱對應表（支援中英文）
+            prerequisite_column_mapping = {
+                'Types': ['Types', '類型(Types)', '類型'],
+                'Prerequisite': ['Prerequisite', '先備關係(Prerequisite)', '先備關係'],
+                'Target': ['Target', '名稱(Name)', '名稱', 'Name']
+            }
+            
+            # 檢查必要欄位並建立對應關係
+            required_fields = ['Types', 'Prerequisite', 'Target']
+            prerequisite_field_mapping = {}
+            missing_columns = []
+            
+            for field in required_fields:
+                found = False
+                for col in df.columns:
+                    if col in prerequisite_column_mapping[field]:
+                        prerequisite_field_mapping[field] = col
+                        found = True
+                        break
+                if not found:
+                    missing_columns.append(field)
+            
             if missing_columns:
                 raise ValueError(f"缺少必要欄位: {missing_columns}")
             
@@ -234,13 +322,16 @@ class KnowledgeGraphConverter:
             # 處理每一行資料
             for index, row in df.iterrows():
                 # 跳過標題行或空行
-                if pd.isna(row['Target']) or str(row['Target']).strip() == '':
+                target_col = prerequisite_field_mapping['Target']
+                if pd.isna(row[target_col]) or str(row[target_col]).strip() == '':
                     continue
                 
-                # 取得欄位值
-                relationship_type = str(row['Types']).strip() if pd.notna(row['Types']) else 'Prerequisite'
-                prerequisite = str(row['Prerequisite']).strip() if pd.notna(row['Prerequisite']) else ''
-                target = str(row['Target']).strip()
+                # 取得欄位值（使用對應的欄位名稱）
+                types_col = prerequisite_field_mapping['Types']
+                prerequisite_col = prerequisite_field_mapping['Prerequisite']
+                relationship_type = str(row[types_col]).strip() if pd.notna(row[types_col]) else 'Prerequisite'
+                prerequisite = str(row[prerequisite_col]).strip() if pd.notna(row[prerequisite_col]) else ''
+                target = str(row[target_col]).strip()
                 
                 # 跳過空白的先備知識點
                 if not prerequisite or prerequisite == '' or prerequisite.upper() == '無':
@@ -334,7 +425,7 @@ class KnowledgeGraphConverter:
         try:
             # 驗證知識點檔案
             df_knowledge = self.read_csv_with_encoding(knowledge_file)
-            required_knowledge_columns = ['Label', 'Name', 'Education System', 'Subject', 'IsRoot']
+            required_knowledge_columns = ['Label', 'Name', 'Education System', 'Subject']
             missing_knowledge = [col for col in required_knowledge_columns if col not in df_knowledge.columns]
             
             if missing_knowledge:

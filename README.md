@@ -12,6 +12,11 @@
 - **自動檢測檔案編碼**（支援UTF-8、Big5、GBK等）
 - 輸出多種格式的Cypher語句檔案
 - 支援多套檔案（EMA、HMA、JMA等）
+- **新增功能**：
+  - 支援中英文並列欄位名稱
+  - 知識點名稱唯一性檢查
+  - 向後相容舊格式檔案
+  - 智能處理 'x' 值為空值
 
 ## 檔案結構
 
@@ -27,6 +32,8 @@ csv2cypher/
 ├── Prerequisite_HMA.csv      # 高中數學先備關係
 ├── knowledge_points_JMA.csv  # 國中數學知識點
 ├── Prerequisite_JMA.csv     # 國中數學先備關係
+├── knowledge_points_example.csv  # 新格式範例檔案
+├── CHANGELOG.md              # 更新日誌
 └── output/                 # 輸出目錄（自動建立）
     ├── knowledge_points_EMA_nodes.cypher
     ├── Prerequisite_EMA_relationships.cypher
@@ -65,22 +72,51 @@ python csv2cypher.py
 
 ### 知識點檔案（必填欄位）
 - `Label`: 節點標籤（如：KnowledgePoint）
-- `Name`: 知識點名稱（主要識別屬性）
+- `Name`: 知識點名稱（主要識別屬性，**必須唯一**）
 - `Education System`: 教育階段（如：Elementary School）
 - `Subject`: 學科領域（如：math）
-- `IsRoot`: 是否為根節點（TRUE/FALSE，空白視為TRUE）
 
 ### 知識點檔案（選填欄位）
 - `ID`: 知識點編號
-- `第一層知識`: 知識分類第一層
-- `第二層知識`: 知識分類第二層
-- `第三層知識`: 知識分類第三層
-- `Learning Performance`: 學習表現描述
+- `IsRoot`: 是否為根節點（TRUE/FALSE，空白時為空值）
+- `Topic` 或 `主題(Topic)`: 知識分類主題層級
+- `Unit` 或 `次主題(Unit)`: 知識分類次主題層級
+- `Concept` 或 `概念(Concept)`: 知識分類概念層級
+
+### 特殊處理規則
+- **中英文並列支援**：支援 `主題(Topic)` 或 `Topic` 等格式
+- **向後相容**：仍支援舊的 `第一層知識`、`第二層知識`、`第三層知識` 欄位名稱
+- **空值處理**：當欄位值為 'x' 時，視為空值
+- **唯一性檢查**：知識點名稱必須唯一，重複時會拋出錯誤
 
 ### 先備關係檔案
 - `Types`: 關係類型（如：Prerequisite）
 - `Prerequisite`: 先備知識點名稱（支援多個，換行分隔）
 - `Target`: 目標知識點名稱
+
+## 檔案格式範例
+
+### 新格式範例
+```csv
+Label,ID,Name,Education System,Subject,IsRoot,Topic,Unit,Concept
+KnowledgePoint,KP001,認識1~5的數,國小(Elementary school),數學(Math),TRUE,數,數到10,認識數字
+KnowledgePoint,KP002,認識6~10的數,國小(Elementary school),數學(Math),,數,數到10,認識數字
+KnowledgePoint,KP003,認識長度,國小(Elementary school),數學(Math),TRUE,量,比長短,長度概念
+```
+
+### 中英文並列格式範例
+```csv
+Label,ID,Name,Education System,Subject,IsRoot,主題(Topic),次主題(Unit),概念(Concept)
+KnowledgePoint,KP001,認識1~5的數,國小(Elementary school),數學(Math),TRUE,數,數到10,認識數字
+KnowledgePoint,KP002,認識6~10的數,國小(Elementary school),數學(Math),,數,數到10,認識數字
+```
+
+### 處理 'x' 值的範例
+```csv
+Label,ID,Name,Education System,Subject,IsRoot,Topic,Unit,Concept
+KnowledgePoint,KP001,認識1~5的數,國小(Elementary school),數學(Math),TRUE,數,x,認識數字
+KnowledgePoint,KP002,認識6~10的數,國小(Elementary school),數學(Math),,數,數到10,x
+```
 
 ## 編碼支援
 
